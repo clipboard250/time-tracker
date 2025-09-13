@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Time Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <meta name="color-scheme" content="dark light" />
+  <style>
+    :root{
+      --brand:#08F7FE; /* neon cyan */
+      --brand2:#F806CC; /* neon magenta */
+      --glass: rgba(12,14,25,0.6);
+      --stroke: rgba(8,247,254,0.45);
+    }
+    body{
+      min-height:100vh; color:#E6F1FF;
+      background: radial-gradient(1200px 600px at 50% -10%, rgba(248,6,204,0.25), transparent 60%),
+                  radial-gradient(1000px 500px at 20% 0%, rgba(8,247,254,0.15), transparent 60%),
+                  linear-gradient(180deg, #0b0f1a 0%, #090d16 60%, #070a12 100%);
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; position: relative; overflow-x: hidden;
+    }
+    body::before{content:"";position:fixed;inset:0;background:
+      radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.7), transparent 40%),
+      radial-gradient(2px 2px at 80% 20%, rgba(255,255,255,0.6), transparent 40%),
+      radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.5), transparent 40%),
+      radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.4), transparent 40%);
+      opacity:.35; pointer-events:none; z-index:0}
+    .grid-horizon{position:relative}
+    .grid-horizon::after{content:""; position:absolute; left:-10vw; right:-10vw; bottom:-2rem; height:38vh; z-index:0;
+      background:
+        linear-gradient(transparent 0%, rgba(8,247,254,0.08) 2%, transparent 2%) 0 0/100% 22px,
+        linear-gradient(90deg, transparent 0%, rgba(8,247,254,0.08) 2%, transparent 2%) 0 0/22px 100%,
+        linear-gradient(180deg, rgba(8,247,254,0.12), rgba(248,6,204,0.08));
+      transform: perspective(700px) rotateX(70deg);
+      transform-origin: top center; filter: drop-shadow(0 0 18px rgba(8,247,254,0.25)); }
+
+    .card{ border-radius: 1rem; border:1px solid rgba(255,255,255,0.06); background: var(--glass); backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.03); position:relative }
+    .card::before{content:""; position:absolute; inset:0; border-radius:1rem; pointer-events:none; box-shadow: 0 0 24px rgba(8,247,254,0.15), 0 0 24px rgba(248,6,204,0.1) inset;}
+
+    .btn{ padding:.65rem 1rem; border-radius:.9rem; font-weight:700; letter-spacing:.3px; transition:transform .08s ease, box-shadow .2s ease; border:1px solid rgba(255,255,255,0.08) }
+    .btn:active{ transform: translateY(1px) scale(.99) }
+    .btn-primary{ color:#031015; background:linear-gradient(135deg, var(--brand), #6CF9FF 30%, var(--brand2) 100%);
+      box-shadow: 0 6px 18px rgba(8,247,254,0.25), 0 0 0 1px rgba(8,247,254,0.35) inset }
+    .btn-ghost{ color:#cfe9ff; background:rgba(255,255,255,0.04); }
+
+    .field{ width:100%; padding:.75rem .9rem; border-radius:.9rem; border:1px solid rgba(255,255,255,0.12); background:rgba(7,10,18,0.6); color:#E6F1FF }
+    .field:focus{ outline:none; box-shadow:0 0 0 2px var(--stroke) }
+    .pill{ font-size:.75rem; padding:.35rem .6rem; border-radius:999px; background:rgba(255,255,255,0.05); border:1px solid rgba(8,247,254,0.25) }
+    .mono{ font-feature-settings: "tnum" on; font-variant-numeric: tabular-nums; }
+
+    .title{ font-family:'Orbitron', system-ui; font-weight:900; letter-spacing:.02em; line-height:1.05; position:relative;
+      background: linear-gradient(180deg, #ffffff 0%, #d2f7ff 30%, #9be7ff 50%, #a7a7a7 60%, #ffffff 100%);
+      -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow: 0 3px 0 rgba(0,0,0,0.35), 0 0 24px rgba(8,247,254,0.2); }
+    .title .accent{ background: linear-gradient(90deg, var(--brand2), var(--brand)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .scanlines{ position:relative }
+    .scanlines::after{ content:""; position:absolute; inset:0; background: repeating-linear-gradient(180deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 2px, transparent 3px); pointer-events:none; mix-blend-mode:overlay; border-radius: 1rem }
+
+    footer{ color:#8fb5d9 }
+  </style>
+</head>
+<body>
+  <main class="relative z-10 max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+    <!-- HERO -->
+    <header class="grid-horizon relative scanlines card p-5 sm:p-7">
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 class="title text-3xl sm:text-4xl"><span class="accent">Time Tracker</span></h1>
+          <p class="text-sm text-sky-200/80">Track tasks with date + time in/out. Totals weekly hours and value. Send or download.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="pill mono" id="weekPill">Week: —</span>
+          <input id="weekStart" type="date" class="field mono w-auto" />
+        </div>
+      </div>
+    </header>
+
+    <!-- ABOUT / GOAL -->
+    <section class="card p-4 sm:p-6">
+      <h2 class="font-semibold text-sky-100 mb-2">About</h2>
+      <p class="text-sm text-sky-100/80">The goal is simple: make work feel <strong>valued and visible</strong>. Log what was completed and when, and the page calculates hours and a dollar amount using an agreed rate. Use it for paid work or fair exchanges — no logins, no apps, just your browser.</p>
+    </section>
+
+    <!-- RATE + ACTIONS -->
+    <section class="card p-4 sm:p-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="text-xs text-sky-200/80">Hourly Rate ($/hr)</label>
+          <input id="rate" type="number" step="0.01" min="0" class="field mono w-full" placeholder="25" />
+          <p class="text-xs text-sky-200/60 mt-1">Used to calculate value (you can override per entry).</p>
+        </div>
+        <div class="md:col-span-2 flex flex-wrap gap-2 items-end">
+          <input id="sendTo" class="field mono flex-1" placeholder="recipient@example.com" />
+          <button id="sendBtn" class="btn btn-primary">Send week by email</button>
+          <button id="downloadBtn" class="btn btn-ghost">Download CSV</button>
+          <button id="clearWeekBtn" class="btn btn-ghost">Clear week</button>
+          <button id="clearAllBtn" class="btn btn-ghost">Clear ALL</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEW ENTRY -->
+    <section class="card p-4 sm:p-6">
+      <h2 class="font-semibold text-sky-100 mb-3">Add an entry</h2>
+      <form id="entryForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div class="lg:col-span-2">
+          <label class="text-xs text-sky-200/80">What was completed?</label>
+          <input id="task" class="field" placeholder="e.g., Mowed front lawn" required />
+        </div>
+        <div>
+          <label class="text-xs text-sky-200/80">Date</label>
+          <input id="date" type="date" class="field mono" required />
+        </div>
+        <div>
+          <label class="text-xs text-sky-200/80">Time In</label>
+          <input id="timeIn" type="time" class="field mono" required />
+        </div>
+        <div>
+          <label class="text-xs text-sky-200/80">Time Out</label>
+          <input id="timeOut" type="time" class="field mono" required />
+        </div>
+        <div>
+          <label class="text-xs text-sky-200/80">Amount Override ($) <span class="text-sky-200/60">(optional)</span></label>
+          <input id="amountOverride" type="number" step="0.01" min="0" class="field mono" placeholder="leave blank to use rate" />
+        </div>
+        <div class="flex items-end gap-2">
+          <button type="submit" class="btn btn-primary w-full">Add Entry</button>
+        </div>
+      </form>
+      <p id="formMsg" class="mt-2 text-sm"></p>
+    </section>
+
+    <!-- TABLE -->
+    <section class="card p-3 sm:p-4">
+      <div class="flex items-center justify-between px-2 py-2">
+        <h2 class="font-semibold text-sky-100">Entries</h2>
+        <div class="pill mono">This week: <span id="weekTotal">0.00</span> hrs | $<span id="weekValue">0.00</span></div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="text-left bg-white/5">
+              <th class="p-2">Date</th>
+              <th class="p-2">Completed</th>
+              <th class="p-2">Time In</th>
+              <th class="p-2">Time Out</th>
+              <th class="p-2">Hours</th>
+              <th class="p-2">Amount ($)</th>
+              <th class="p-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="text-center text-xs">Time Tracker • Saves locally in your browser • No logins</footer>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const todayStr = () => new Date().toISOString().slice(0,10);
+
+    const KEY = 'time_tracker_entries_v1';
+    const RATE_KEY = 'time_tracker_rate';
+
+    function toMinutes(t) { if (!t) return null; const [h,m] = t.split(":" ).map(Number); return h*60 + m; }
+    function minutesToHours(min) { return (min/60); }
+    function startOfWeek(date) { const d = new Date(date.getFullYear(), date.getMonth(), date.getDate()); const day = d.getDay(); const diff = (day === 0 ? -6 : 1 - day); d.setDate(d.getDate() + diff); return d; }
+    function sameWeek(a, b) { const sa = startOfWeek(a), sb = startOfWeek(b); return sa.toDateString() === sb.toDateString(); }
+    function formatDate(d) { return d.toISOString().slice(0,10); }
+    function weekLabel(d) { const start = startOfWeek(d); const end = new Date(start); end.setDate(end.getDate()+6); return `${formatDate(start)} → ${formatDate(end)}`; }
+
+    function loadEntries() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } }
+    function saveEntries(data) { localStorage.setItem(KEY, JSON.stringify(data)); }
+
+    function loadRate() { const r = parseFloat(localStorage.getItem(RATE_KEY)); return isFinite(r) ? r : 25; }
+    function saveRate(v) { localStorage.setItem(RATE_KEY, String(v)); }
+
+    let entries = loadEntries();
+
+    // init defaults
+    $("date").value = todayStr();
+    const wk = startOfWeek(new Date());
+    $("weekStart").value = formatDate(wk);
+    $("rate").value = loadRate();
+
+    function render() {
+      const tbody = $("tbody"); tbody.innerHTML = '';
+      const selectedWeek = new Date($("weekStart").value);
+      $("weekPill").textContent = `Week: ${weekLabel(selectedWeek)}`;
+      let weekMinutes = 0, weekAmount = 0;
+      const rate = parseFloat($("rate").value) || 0;
+
+      entries.sort((a,b) => (a.date > b.date ? 1 : -1)).forEach((e, idx) => {
+        const d = new Date(e.date+"T00:00:00");
+        const inWeek = sameWeek(d, selectedWeek);
+        const tr = document.createElement('tr');
+        tr.className = inWeek ? "hover:bg-white/5" : "opacity-50";
+        const hours = Number(e.hours || 0);
+        const amount = e.amountOverride != null && e.amountOverride !== '' ? Number(e.amountOverride) : Number((hours * rate).toFixed(2));
+        if (inWeek) { weekMinutes += Math.round(hours*60); weekAmount += amount; }
+        tr.innerHTML = `
+          <td class="p-2 mono editable" contenteditable="true" data-field="date" data-idx="${idx}">${e.date}</td>
+          <td class="p-2 editable" contenteditable="true" data-field="task" data-idx="${idx}">${e.task}</td>
+          <td class="p-2 mono editable" contenteditable="true" data-field="timeIn" data-idx="${idx}">${e.timeIn}</td>
+          <td class="p-2 mono editable" contenteditable="true" data-field="timeOut" data-idx="${idx}">${e.timeOut}</td>
+          <td class="p-2 mono editable" contenteditable="true" data-field="hours" data-idx="${idx}">${hours.toFixed(2)}</td>
+          <td class="p-2 mono editable" contenteditable="true" data-field="amountOverride" data-idx="${idx}">${e.amountOverride ?? ''}</td>
+          <td class="p-2"><button data-idx="${idx}" class="btn btn-ghost text-xs">Delete</button></td>`;
+        tbody.appendChild(tr);
+      });
+
+      $("weekTotal").textContent = minutesToHours(weekMinutes).toFixed(2);
+      $("weekValue").textContent = weekAmount.toFixed(2);
+
+      // Delete buttons
+      document.querySelectorAll('button.btn.btn-ghost').forEach(btn => btn.addEventListener('click', e => {
+        const i = Number(e.currentTarget.getAttribute('data-idx'));
+        entries.splice(i,1); saveEntries(entries); render();
+      }));
+
+      // Inline editing
+      document.querySelectorAll('.editable').forEach(cell => {
+        cell.addEventListener('blur', (e) => {
+          const idx = Number(e.target.dataset.idx);
+          const field = e.target.dataset.field;
+          let val = e.target.textContent.trim();
+          if (field === 'hours') {
+            const num = parseFloat(val);
+            if (!isFinite(num) || num < 0) { e.target.textContent = entries[idx].hours.toFixed(2); return; }
+            entries[idx].hours = Number(num.toFixed(2));
+          } else if (field === 'amountOverride') {
+            if (val === '') { entries[idx].amountOverride = ''; }
+            else {
+              const num = parseFloat(val);
+              if (!isFinite(num) || num < 0) { e.target.textContent = entries[idx].amountOverride ?? ''; return; }
+              entries[idx].amountOverride = Number(num.toFixed(2));
+            }
+          } else {
+            entries[idx][field] = val;
+          }
+          saveEntries(entries); render();
+        });
+      });
+    }
+
+    render();
+
+    $("entryForm").addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const task = $("task").value.trim();
+      const date = $("date").value;
+      const timeIn = $("timeIn").value;
+      const timeOut = $("timeOut").value;
+      const amountOverride = $("amountOverride").value;
+      if (!date || !timeIn || !timeOut || !task) { msg('Please fill all fields.', true); return; }
+      const minIn = toMinutes(timeIn);
+      const minOut = toMinutes(timeOut);
+      if (minOut <= minIn) { msg('Time Out must be after Time In.', true); return; }
+      const hours = (minOut - minIn) / 60;
+      entries.push({ task, date, timeIn, timeOut, hours: Number(hours.toFixed(2)), amountOverride: amountOverride ? Number(parseFloat(amountOverride).toFixed(2)) : '' });
+      saveEntries(entries);
+      $("task").value = ''; $("timeIn").value = ''; $("timeOut").value = ''; $("amountOverride").value = '';
+      msg('Added ✔');
+      render();
+    });
+
+    function msg(t, isErr=false) { const el = $("formMsg"); el.textContent = t; el.className = `mt-2 text-sm ${isErr ? 'text-rose-400' : 'text-emerald-300'}`; setTimeout(()=>{ el.textContent=''; }, 2000); }
+
+    $("weekStart").addEventListener('change', render);
+
+    // Rate change + persist
+    $("rate").addEventListener('input', () => { const v = parseFloat($("rate").value); if (isFinite(v) && v >= 0) { saveRate(v); render(); } });
+
+    // CSV Download
+    $("downloadBtn").addEventListener('click', () => {
+      const selectedWeek = new Date($("weekStart").value);
+      const rate = parseFloat($("rate").value) || 0;
+      const rows = [["Date","Completed","Time In","Time Out","Hours","Amount ($)"]];
+      entries.filter(e => sameWeek(new Date(e.date+"T00:00:00"), selectedWeek)).forEach(e => {
+        const amt = e.amountOverride !== '' && e.amountOverride != null ? e.amountOverride : Number((e.hours*rate).toFixed(2));
+        rows.push([e.date, e.task, e.timeIn, e.timeOut, e.hours, amt]);
+      });
+      const csv = rows.map(r => r.map(v => String(v).replaceAll('"','""')).map(v => `"${v}` + `"`).join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const a = document.createElement('a');
+      const wkLabel = weekLabel(selectedWeek).replaceAll(' ','');
+      a.href = URL.createObjectURL(blob);
+      a.download = `time-tracker-week-${wkLabel}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    // Email summary via mailto
+    $("sendBtn").addEventListener('click', () => {
+      const email = $("sendTo").value.trim() || '';
+      const selectedWeek = new Date($("weekStart").value);
+      const wkLabel = weekLabel(selectedWeek);
+      const rate = parseFloat($("rate").value) || 0;
+      const weekEntries = entries.filter(e => sameWeek(new Date(e.date+"T00:00:00"), selectedWeek));
+      if (weekEntries.length === 0) { alert('No entries for this week.'); return; }
+      const totalHours = weekEntries.reduce((sum,e)=>sum+Number(e.hours||0),0).toFixed(2);
+      const totalAmount = weekEntries.reduce((sum,e)=>{
+        const amt = (e.amountOverride !== '' && e.amountOverride != null) ? Number(e.amountOverride) : Number((e.hours*rate).toFixed(2));
+        return sum + amt;
+      },0).toFixed(2);
+      const lines = weekEntries.map(e => {
+        const amt = (e.amountOverride !== '' && e.amountOverride != null) ? Number(e.amountOverride).toFixed(2) : Number((e.hours*rate).toFixed(2)).toString();
+        return `• ${e.date} – ${e.task} (${e.timeIn}–${e.timeOut}) = ${Number(e.hours).toFixed(2)}h = $${amt}`;
+      });
+      const intro = `Time Tracker weekly summary for ${wkLabel}.`;
+      const body = [intro,'',...lines,'',`Total: ${totalHours} hrs = $${totalAmount}`,'','— Sent from Time Tracker'].join('\n');
+      const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Time Tracker – '+wkLabel)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailto;
+    });
+
+    // Clearers
+    $("clearWeekBtn").addEventListener('click', () => { const selectedWeek = new Date($("weekStart").value); if (!confirm(`Delete all entries for ${weekLabel(selectedWeek)}?`)) return; entries = entries.filter(e => !sameWeek(new Date(e.date+"T00:00:00"), selectedWeek)); saveEntries(entries); render(); });
+    $("clearAllBtn").addEventListener('click', () => { if (!confirm('Delete ALL entries?')) return; entries = []; saveEntries(entries); render(); });
+  </script>
+</body>
+</html>
