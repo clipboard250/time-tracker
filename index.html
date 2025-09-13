@@ -27,8 +27,6 @@
     .title{ font-family:'Orbitron', system-ui; font-weight:900; letter-spacing:.02em; line-height:1.05;
       background:linear-gradient(180deg,#fff 0%,#d2f7ff 30%,#9be7ff 50%,#a7a7a7 60%,#ffffff 100%);
       -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:0 3px 0 rgba(0,0,0,.35), 0 0 24px rgba(8,247,254,.2); }
-    .note{ font-size:.9rem; color:#bfe0ff }
-    /* large tap targets */
     button, input{ min-height:48px }
   </style>
 </head>
@@ -39,13 +37,11 @@
       <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <h1 class="title text-3xl">Time Tracker</h1>
         <div class="flex items-center gap-2">
-          <button id="prevWeek" class="btn btn-ghost" aria-label="Previous week">◀</button>
-          <span class="pill mono" id="weekPill">Week: —</span>
-          <input id="weekStart" type="date" class="field mono w-auto" aria-label="Week start date"/>
-          <button id="nextWeek" class="btn btn-ghost" aria-label="Next week">▶</button>
+          <label class="text-sm text-sky-200/90">Week of</label>
+          <input id="weekStart" type="date" class="field mono w-auto" />
         </div>
       </div>
-      <p class="note mt-3">Saves only on this device. Private until you download or email.</p>
+      <p class="text-sm text-sky-100/80 mt-2">Saves only on this device. Private until you download or email.</p>
     </header>
 
     <!-- RATE -->
@@ -56,7 +52,7 @@
           <input id="rate" type="number" step="0.01" min="0" class="field mono" placeholder="25" />
         </div>
         <div class="sm:col-span-2 text-sky-100/80 text-sm">
-          Rate is used to calculate dollars. You can also set a flat amount for a line below.
+          Used to calculate dollars. You can set a flat amount per line if needed.
         </div>
       </div>
     </section>
@@ -91,7 +87,7 @@
       <p id="formMsg" class="mt-2 text-sm"></p>
     </section>
 
-    <!-- TABLE -->
+    <!-- TABLE + TOTALS -->
     <section class="card p-3">
       <div class="flex items-center justify-between px-2 py-2">
         <h2 class="font-extrabold">Entries</h2>
@@ -128,7 +124,7 @@
   </main>
 
   <script>
-    // helpers
+    // Basic helpers
     const $ = id => document.getElementById(id);
     const todayStr = () => new Date().toISOString().slice(0,10);
     const toMin = t => { if(!t) return null; const [h,m]=t.split(':').map(Number); return h*60+m; };
@@ -136,32 +132,28 @@
     const startOfWeek = d => { const x=new Date(d.getFullYear(), d.getMonth(), d.getDate()); const day=x.getDay(); const diff=(day===0?-6:1-day); x.setDate(x.getDate()+diff); return x; };
     const sameWeek = (a,b) => startOfWeek(a).toDateString()===startOfWeek(b).toDateString();
     const fmtDate = d => d.toISOString().slice(0,10);
-    const weekLabel = d => { const s=startOfWeek(d); const e=new Date(s); e.setDate(e.getDate()+6); return `${fmtDate(s)} → ${fmtDate(e)}`; };
 
-    // storage
+    // Local storage
     const KEY='time_tracker_entries_v1', RATE_KEY='time_tracker_rate';
     const loadEntries = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
     const saveEntries = d => localStorage.setItem(KEY, JSON.stringify(d));
     const loadRate = () => { const r=parseFloat(localStorage.getItem(RATE_KEY)); return isFinite(r)?r:25; };
     const saveRate = v => localStorage.setItem(RATE_KEY, String(v));
 
-    // state
     let entries = loadEntries();
 
-    // init
+    // Init defaults
     $('date').value = todayStr();
     $('rate').value = loadRate();
-    const wk = startOfWeek(new Date());
-    $('weekStart').value = fmtDate(wk);
+    $('weekStart').value = fmtDate(startOfWeek(new Date()));
 
-    // render
     function render(){
-      const tbody=$('tbody'); tbody.innerHTML='';
+      const tbody=$('tbody'); 
+      tbody.innerHTML='';
       const rate = parseFloat($('rate').value)||0;
       const selectedWeek=new Date($('weekStart').value);
-      $('weekPill').textContent=`Week: ${weekLabel(selectedWeek)}`;
-
       let weekMin=0, weekAmt=0;
+
       entries.sort((a,b)=>a.date.localeCompare(b.date)).forEach((e,i)=>{
         const d=new Date(e.date+'T00:00:00');
         const inWeek=sameWeek(d,selectedWeek);
@@ -169,7 +161,12 @@
         const amount=(e.amountOverride!=='' && e.amountOverride!=null)
           ? Number(e.amountOverride)
           : Number((hours*rate).toFixed(2));
-        if(inWeek){ weekMin += Math.round(hours*60); weekAmt += amount; }
+        
+        if(inWeek){ 
+          weekMin += Math.round(hours*60); 
+          weekAmt += amount; 
+        }
+        
         const tr=document.createElement('tr');
         tr.className = inWeek ? 'hover:bg-white/5' : 'opacity-50';
         tr.innerHTML = `
@@ -177,107 +174,138 @@
           <td class="p-2">${e.task}</td>
           <td class="p-2 mono">${e.timeIn}</td>
           <td class="p-2 mono">${e.timeOut}</td>
-          <td class="p-2 mono editable" contenteditable="true" data-field="hours" data-idx="${i}">${hours.toFixed(2)}</td>
-          <td class="p-2 mono editable" contenteditable="true" data-field="amountOverride" data-idx="${i}">${(e.amountOverride!==''&&e.amountOverride!=null)?Number(e.amountOverride).toFixed(2):''}</td>
-          <td class="p-2"><button class="btn btn-ghost text-sm" data-idx="${i}">Delete</button></td>
-        `;
+          <td class="p-2 mono">${hours.toFixed(2)}</td>
+          <td class="p-2 mono">${(e.amountOverride!==''&&e.amountOverride!=null)?Number(e.amountOverride).toFixed(2):amount.toFixed(2)}</td>
+          <td class="p-2"><button class="btn btn-ghost text-sm delete-btn" data-idx="${i}">Delete</button></td>`;
         tbody.appendChild(tr);
       });
 
       $('weekTotal').textContent = minToHours(weekMin).toFixed(2);
       $('weekValue').textContent = weekAmt.toFixed(2);
 
-      // bind delete
-      document.querySelectorAll('button.btn.btn-ghost').forEach(b=>{
-        b.onclick = () => {
-          const i=Number(b.getAttribute('data-idx'));
-          entries.splice(i,1); saveEntries(entries); render();
-        };
-      });
-
-      // inline edit for hours/amount only (keeps UI simple)
-      document.querySelectorAll('.editable').forEach(cell=>{
-        cell.onblur = (ev)=>{
-          const i=Number(ev.target.dataset.idx);
-          const field=ev.target.dataset.field;
-          let v=ev.target.textContent.trim();
-          if(field==='hours'){
-            const num=parseFloat(v);
-            if(!isFinite(num)||num<0){ ev.target.textContent = entries[i].hours.toFixed(2); return; }
-            entries[i].hours = Number(num.toFixed(2));
-          }else if(field==='amountOverride'){
-            if(v===''){ entries[i].amountOverride=''; }
-            else{
-              const num=parseFloat(v);
-              if(!isFinite(num)||num<0){ ev.target.textContent = (entries[i].amountOverride??''); return; }
-              entries[i].amountOverride = Number(num.toFixed(2));
-            }
-          }
-          saveEntries(entries); render();
+      // Delete handlers
+      document.querySelectorAll('.delete-btn').forEach(b=>{
+        b.onclick = () => { 
+          const i=Number(b.getAttribute('data-idx')); 
+          entries.splice(i,1); 
+          saveEntries(entries); 
+          render(); 
         };
       });
     }
+
     render();
 
-    // add entry
+    // Add entry
     $('entryForm').addEventListener('submit', (e)=>{
       e.preventDefault();
       const task=$('task').value.trim();
       const date=$('date').value, tin=$('timeIn').value, tout=$('timeOut').value;
       const amt=$('amountOverride').value;
-      if(!task||!date||!tin||!tout){ msg('Please fill all fields.', true); return; }
+      
+      if(!task||!date||!tin||!tout){ 
+        msg('Please fill all fields.', true); 
+        return; 
+      }
+      
       const minIn=toMin(tin), minOut=toMin(tout);
-      if(minOut<=minIn){ msg('Time Out must be after Time In.', true); return; }
+      if(minOut<=minIn){ 
+        msg('Time Out must be after Time In.', true); 
+        return; 
+      }
+      
       const hours=(minOut-minIn)/60;
-      entries.push({ task, date, timeIn:tin, timeOut:tout, hours:Number(hours.toFixed(2)), amountOverride: amt?Number(parseFloat(amt).toFixed(2)):'' });
+      entries.push({ 
+        task, 
+        date, 
+        timeIn:tin, 
+        timeOut:tout, 
+        hours:Number(hours.toFixed(2)), 
+        amountOverride: amt?Number(parseFloat(amt).toFixed(2)):'' 
+      });
+      
       saveEntries(entries);
-      // jump week to the new entry
-      $('weekStart').value = fmtDate(startOfWeek(new Date(date+'T00:00:00')));
-      // clear
+      $('weekStart').value = fmtDate(startOfWeek(new Date(date+'T00:00:00'))); // jump to week of entry
       $('task').value=''; $('timeIn').value=''; $('timeOut').value=''; $('amountOverride').value='';
-      msg('Added ✔'); render();
+      msg('Added ✔'); 
+      render();
     });
 
-    // messages
-    function msg(t, err=false){ const el=$('formMsg'); el.textContent=t; el.className=`mt-2 text-sm ${err?'text-rose-300':'text-emerald-300'}`; setTimeout(()=>{ el.textContent=''; }, 1800); }
+    // Simple status message
+    function msg(t, err=false){ 
+      const el=$('formMsg'); 
+      el.textContent=t; 
+      el.className=`mt-2 text-sm ${err?'text-rose-300':'text-emerald-300'}`; 
+      setTimeout(()=>{ el.textContent=''; }, 1500); 
+    }
 
-    // week controls + rate
-    const shiftWeek = days => { const cur=new Date($('weekStart').value); cur.setDate(cur.getDate()+days); $('weekStart').value=fmtDate(startOfWeek(cur)); render(); };
-    $('prevWeek').onclick = ()=>shiftWeek(-7);
-    $('nextWeek').onclick = ()=>shiftWeek(7);
-    $('weekStart').onchange = render;
-    $('rate').oninput = ()=>{ const v=parseFloat($('rate').value); if(isFinite(v)&&v>=0){ localStorage.setItem('time_tracker_rate', String(v)); render(); } };
+    // Week + rate react
+    $('weekStart').addEventListener('change', render);
+    $('rate').addEventListener('input', ()=>{ 
+      const v=parseFloat($('rate').value); 
+      if(isFinite(v)&&v>=0){ 
+        saveRate(v); 
+        render(); 
+      } 
+    });
 
-    // CSV
-    $('downloadBtn').onclick = ()=>{
+    // CSV Download
+    $('downloadBtn').onclick = () => {
       const selectedWeek = new Date($('weekStart').value);
       const rate = parseFloat($('rate').value)||0;
       const rows = [["Date","Completed","Time In","Time Out","Hours","Amount ($)"]];
+      
       entries.filter(e=>sameWeek(new Date(e.date+'T00:00:00'), selectedWeek)).forEach(e=>{
         const amt=(e.amountOverride!==''&&e.amountOverride!=null)?Number(e.amountOverride):Number((e.hours*rate).toFixed(2));
         rows.push([e.date, e.task, e.timeIn, e.timeOut, e.hours.toFixed(2), amt.toFixed(2)]);
       });
+      
       const csv = rows.map(r=>r.map(v=>String(v).replaceAll('"','""')).map(v=>`"${v}"`).join(',')).join('\n');
-      const blob = new Blob([csv], {type:'text/csv'}); const a=document.createElement('a');
-      const wkLabel = weekLabel(selectedWeek).replaceAll(' ','');
-      a.href=URL.createObjectURL(blob); a.download=`time-tracker-${wkLabel}.csv`; a.click(); URL.revokeObjectURL(a.href);
+      const blob=new Blob([csv],{type:'text/csv'}); 
+      const a=document.createElement('a');
+      const s=startOfWeek(new Date($('weekStart').value)); 
+      const e=new Date(s); 
+      e.setDate(e.getDate()+6);
+      a.href=URL.createObjectURL(blob); 
+      a.download=`time-tracker-${fmtDate(s)}-to-${fmtDate(e)}.csv`; 
+      a.click(); 
+      URL.revokeObjectURL(a.href);
     };
 
-    // email
-    $('sendBtn').onclick = ()=>{
+    // Email Summary
+    $('sendBtn').onclick = () => {
       const email = $('sendTo').value.trim() || '';
-      const selectedWeek=new Date($('weekStart').value); const wkLabel=weekLabel(selectedWeek);
+      const selectedWeek=new Date($('weekStart').value); 
+      const s=startOfWeek(selectedWeek); 
+      const e=new Date(s); 
+      e.setDate(e.getDate()+6);
       const rate = parseFloat($('rate').value)||0;
-      const weekEntries = entries.filter(e=>sameWeek(new Date(e.date+'T00:00:00'), selectedWeek));
-      if(weekEntries.length===0){ alert('No entries for this week.'); return; }
-      const totalHours = weekEntries.reduce((s,e)=>s+Number(e.hours||0),0).toFixed(2);
-      const totalAmount = weekEntries.reduce((s,e)=> s + ((e.amountOverride!==''&&e.amountOverride!=null)? Number(e.amountOverride) : Number((e.hours*rate).toFixed(2))), 0).toFixed(2);
-      const lines = weekEntries.map(e=>{
-        const amt = (e.amountOverride!==''&&e.amountOverride!=null)? Number(e.amountOverride).toFixed(2) : Number((e.hours*rate).toFixed(2)).toString();
-        return `• ${e.date} – ${e.task} (${e.timeIn}–${e.timeOut}) = ${Number(e.hours).toFixed(2)}h = $${amt}`;
+      const weekEntries = entries.filter(en=>sameWeek(new Date(en.date+'T00:00:00'), selectedWeek));
+      
+      if(weekEntries.length===0){ 
+        alert('No entries for this week.'); 
+        return; 
+      }
+      
+      const totalHours = weekEntries.reduce((sum,en)=>sum+Number(en.hours||0),0).toFixed(2);
+      const totalAmount = weekEntries.reduce((sum,en)=> sum + ((en.amountOverride!==''&&en.amountOverride!=null)? Number(en.amountOverride) : Number((en.hours*rate).toFixed(2))), 0).toFixed(2);
+      
+      const lines = weekEntries.map(en=>{
+        const amt=(en.amountOverride!==''&&en.amountOverride!=null)? Number(en.amountOverride).toFixed(2) : Number((en.hours*rate).toFixed(2)).toString();
+        return `• ${en.date} – ${en.task} (${en.timeIn}–${en.timeOut}) = ${Number(en.hours).toFixed(2)}h = $${amt}`;
       });
-      const body = [`Time Tracker weekly summary for ${wkLabel}.`,'',...lines,'',`Total: ${totalHours} hrs = $${totalAmount}`,'','— Sent from Time Tracker`].join('\n');
-      const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Time Tracker – '+wkLabel)}&body=${encodeURIComponent(body)}`;
+      
+      const body = [
+        `Time Tracker weekly summary for ${fmtDate(s)} → ${fmtDate(e)}.`,
+        '',
+        ...lines,
+        '',
+        `Total: ${totalHours} hrs = $${totalAmount}`,
+        '',
+        '— Sent from Time Tracker'
+      ].join('\n');
+      
+      const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Time Tracker – '+fmtDate(s)+' → '+fmtDate(e))}&body=${encodeURIComponent(body)}`;
       window.location.href = mailto;
     };
   </script>
