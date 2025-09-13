@@ -204,8 +204,14 @@
       const amt=$('amountOverride').value;
       
       if(!task||!date||!tin||!tout){ 
-        msg('Please fill all fields.', true); 
+        msg('Please fill all required fields.', true); 
         return; 
+      }
+      
+      // Validate date format
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        msg('Please enter a valid date.', true);
+        return;
       }
       
       const minIn=toMin(tin), minOut=toMin(tout);
